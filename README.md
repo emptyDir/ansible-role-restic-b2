@@ -38,6 +38,8 @@ Restic is installed via the system's package manager. This will work on most Lin
 
 The `restic.service` and `restic.timer` configuration files are created to automate the backup process. The `restic_env_file` contains environment variable definitions used for configuring `restic` at runtime. The `restic_password_file` contains a password used by restic to secure backups. The value of the restic password needs to be provided to the role at runtime.
 
+A shell script is generated at `/usr/local/bin/backup.sh` which provides a wrapper for restic that will load the values from the restic env file at runtime.
+
 #### Restic Vars
 
 | name                     | type     | description                                                                                                           | default                           |

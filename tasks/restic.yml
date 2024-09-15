@@ -56,6 +56,14 @@
         and 'created restic repository' in restic_init.stderr
       )
 
+- name: Generate wrapper script for restic
+  ansible.builtin.template:
+    src: backup.sh.j2
+    dest: /usr/local/bin/backup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
 - name: Create systemd service
   ansible.builtin.template:
     src: restic.service.j2
