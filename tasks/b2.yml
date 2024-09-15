@@ -10,7 +10,7 @@
       {%- if b2_resource_prefix is defined -%}
         {{ b2_resource_prefix }}
       {%- endif -%}
-      "{{ b2_key_name }}"
+      {{ b2_key_name }}
 
 - name: Create an b2 bucket for the host
   ansible.builtin.command:
