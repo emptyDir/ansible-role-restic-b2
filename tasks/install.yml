@@ -1,0 +1,47 @@
+---
+- name: Get b2 releases
+  ansible.builtin.uri:
+    url: "{{ b2_cli_releases_url }}"
+    return_content: true
+  register: releases
+
+- name: Install b2 cli
+  become: true
+  ansible.builtin.get_url:
+    url: >-
+      {{
+          releases.json.assets
+          | selectattr('name', 'equalto', 'b2-linux')
+          | map(attribute='browser_download_url')
+          | first
+      }}
+    dest: "{{ b2_cli_install_dir }}/b2"
+    checksum: "{{ b2_cli_checksum }}"
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Get os family
+  ansible.builtin.set_fact:
+    os_family: "{{ ansible_local.main.os_family | default(ansible_os_family | lower) }}"
+
+# Zypper transactional-updates take for fucking ever so
+# it's faster to skip it if it's already installed.
+- name: Stat restic binary
+  ansible.builtin.stat:
+    path: "{{ restic_bin }}"
+  register: bin_stat
+
+- name: Install restic
+  ansible.builtin.package:
+    name: restic
+    state: present
+  when: "'suse' not in os_family"
+
+- name: Install restic (zypper)
+  community.general.zypper:
+    name: restic
+    state: present
+  when:
+    - "'suse' in os_family"
+    - not bin_stat.stat.exists

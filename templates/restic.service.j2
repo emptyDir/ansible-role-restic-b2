@@ -1,0 +1,13 @@
+[Unit]
+Description=Perform backups with restic
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+EnvironmentFile=/etc/restic/restic.env
+{% for folder in restic_backup_folders %}
+ExecStart={{ restic_bin }} backup {{ folder }}
+{% endfor %}
+
+[Install]
+WantedBy=multi-user.target

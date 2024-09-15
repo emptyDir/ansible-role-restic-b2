@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: restic_b2
+  namespace: emptydir
+  author: Adam D
+  description: Configure restic backups with Backblaze b2
+  license: GPLv3
+  min_ansible_version: "2.16"
+  platforms:
+    - name: Rocky
+      versions:
+        - "9.0"
+        - "9.1"
+        - "9.2"
+    - name: EL
+      versions:
+        - "9"
+    - name: opensuse
+      versions:
+        - "15.3"
+        - "15.4"
+        - "15.5"
+  galaxy_tags:
+    - backup
+    - b2
+    - backblaze
+    - restic
+

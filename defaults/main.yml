@@ -1,0 +1,20 @@
+b2_cli_install_dir: /usr/local/bin
+b2_cli_version: 4.1.0
+b2_cli_checksum: sha256:e6a4caaa035d1fd7e6bfde4b095556cafb4f5f74e784ce27a7af1b3e591bc9b8
+b2_cli_releases_url: "https://api.github.com/repos/Backblaze/B2_Command_Line_Tool/releases/tags/v{{ b2_cli_version }}"
+
+b2_bucket_name: "{{ inventory_hostname_short }}-backup"
+b2_key_name: "{{ inventory_hostname_short }}-restic"
+b2_region: us-west-001
+b2_use_local_vars: true
+
+restic_bin: /usr/bin/restic
+restic_config_dir: /etc/restic
+restic_temp_dir: /var/tmp
+restic_password_file: "{{ restic_config_dir }}/password"
+restic_env_file: "{{ restic_config_dir }}/restic.env"
+restic_backup_folders:
+  - /home
+
+# https://man.archlinux.org/man/systemd.time.7#CALENDAR_EVENTS
+restic_backup_schedule: "*-*-* 02:00:00"

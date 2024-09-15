@@ -1,0 +1,77 @@
+---
+- name: Create restic config dir
+  ansible.builtin.file:
+    path: "{{ restic_config_dir }}"
+    owner: root
+    group: root
+    mode: "0750"
+    state: directory
+
+- name: Set restic env variables
+  ansible.builtin.set_fact:
+   restic_env:
+    AWS_ACCESS_KEY_ID: "{{ backups_b2_application_key_id }}"
+    AWS_SECRET_ACCESS_KEY: "{{ backups_b2_application_key }}"
+    RESTIC_REPOSITORY: "s3:s3.{{ b2_region }}.backblazeb2.com/{{ b2_bucket_name }}"
+    RESTIC_PASSWORD_FILE: "{{ restic_password_file }}"
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Create restic vars file
+  ansible.builtin.copy:
+    content: "{{ restic_env | items | map('join', '=') | join('\n')}}"
+    dest: "{{ restic_env_file }}"
+    owner: root
+    group: root
+    mode: "0640"
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Create restic password file
+  ansible.builtin.copy:
+    content: "{{ restic_password }}"
+    dest: "{{ restic_password_file }}"
+    owner: root
+    group: root
+    mode: "0700"
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Initialize restic backup repository
+  ansible.builtin.command:
+    argv:
+      - "{{ restic_bin }}"
+      - init
+  environment: "{{ restic_env }}"
+  register: restic_init
+  failed_when:
+    - restic_init.rc != 0
+    - >-
+      (
+        restic_init.stderr is defined
+        and not 'already initialized' in restic_init.stderr
+      )
+  changed_when: 
+  - restic_init.rc == 0
+  - >-
+      (
+        restic_init.stdout is defined
+        and 'created restic repository' in restic_init.stderr
+      )
+
+- name: Create systemd service
+  ansible.builtin.template:
+    src: restic.service.j2
+    dest: /etc/systemd/system/restic.service
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Start restic service
+
+- name: Create systemd timer
+  ansible.builtin.template:
+    src: restic.timer.j2
+    dest: /etc/systemd/system/restic.timer
+    owner: root
+    group: root
+    mode: "0755"
+  notify:
+    - Enable restic timer

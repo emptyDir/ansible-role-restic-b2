@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+set -eu -o pipefail
+
+export $(cat /etc/restic/restic.env | xargs)
+
+exec {{ restic_bin }} "$@"

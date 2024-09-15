@@ -1,0 +1,118 @@
+---
+- name: Set bucket names
+  ansible.builtin.set_fact:
+    b2_bucket_name: >-
+      {%- if b2_resource_prefix is defined -%}
+        {{ b2_resource_prefix }}
+      {%- endif -%}
+      {{ b2_bucket_name }}
+    b2_key_name: >-
+      {%- if b2_resource_prefix is defined -%}
+        {{ b2_resource_prefix }}
+      {%- endif -%}
+      "{{ b2_key_name }}"
+
+- name: Create an b2 bucket for the host
+  ansible.builtin.command:
+    argv:
+      - "{{ b2_cli_install_dir }}/b2"
+      - bucket
+      - create
+      - --default-server-side-encryption=SSE-B2
+      - "{{ b2_bucket_name }}"
+      - allPrivate
+  environment:
+    B2_APPLICATION_KEY_ID: "{{ b2_application_key_id }}"
+    B2_APPLICATION_KEY: "{{ b2_application_key }}"
+  register: b2_create
+  changed_when: b2_create.rc == 0
+  failed_when: b2_create.rc > 1
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Check for cached b2 application keys
+  ansible.builtin.set_fact:
+    b2_stored_keys_exist: >-
+      {{
+        (
+          ansible_local.b2.backups_b2_application_key_id is defined
+          and ansible_local.b2.backups_b2_application_key is defined
+        )
+        | bool
+      }}
+    b2_stored_keys_valid: false
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Set key variables
+  ansible.builtin.set_fact:
+    backups_b2_application_key_id: "{{ ansible_local.b2.backups_b2_application_key_id }}"
+    backups_b2_application_key: "{{ ansible_local.b2.backups_b2_application_key }}"
+  when: b2_stored_keys_exist | bool
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Get valid b2 keys
+  ansible.builtin.command:
+    argv:
+      - "{{ b2_cli_install_dir }}/b2"
+      - key
+      - list
+  environment:
+    B2_APPLICATION_KEY_ID: "{{ b2_application_key_id }}"
+    B2_APPLICATION_KEY: "{{ b2_application_key }}"
+  register: b2_key_list
+  when: b2_stored_keys_exist | bool
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+  changed_when: b2_key_list.rc == 0
+
+- name: Check if stored keys are valid
+  ansible.builtin.set_fact:
+    b2_stored_keys_valid: >-
+      {{
+        (backups_b2_application_key_id in b2_key_list.stdout)
+        | bool
+      }}
+  when: b2_stored_keys_exist
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Create b2 application keys for the host
+  ansible.builtin.command:
+    argv:
+      - "{{ b2_cli_install_dir }}/b2"
+      - key
+      - create
+      - --bucket
+      - "{{ b2_bucket_name }}"
+      - "{{ b2_key_name }}"
+      - deleteFiles,listAllBucketNames,listBuckets,listFiles,readBucketEncryption,readBucketReplications,readBuckets,readFiles,shareFiles,writeBucketEncryption,writeBucketReplications,writeFiles
+  environment:
+    B2_APPLICATION_KEY_ID: "{{ b2_application_key_id }}"
+    B2_APPLICATION_KEY: "{{ b2_application_key }}"
+  register: b2_key_create
+  changed_when: b2_key_create.rc == 0
+  failed_when: b2_key_create.rc > 0
+  when:
+    - not b2_stored_keys_exist
+    - not b2_stored_keys_valid
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+
+- name: Parse keys from b2 cli output
+  ansible.builtin.set_fact:
+    backups_b2_application_key_id: "{{ parsed_keys[0] | trim }}"
+    backups_b2_application_key: "{{ parsed_keys[1] | trim }}"
+  vars:
+    parsed_keys: "{{ b2_key_create.stdout | split }}"
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"
+  when: b2_key_create is changed
+
+- name: Save keys to custom facts
+  become: true
+  ansible.builtin.copy:
+    content: "{{ custom_facts | to_json(indent=2, sort_keys=True) }}"
+    dest: /etc/ansible/facts.d/b2.fact
+    owner: root
+    group: root
+    mode: "0644"
+  vars:
+    custom_facts:
+      backups_b2_application_key_id: "{{ backups_b2_application_key_id }}"
+      backups_b2_application_key: "{{ backups_b2_application_key }}"
+  no_log: "{{ restic_b2_no_log | default(true) | bool }}"

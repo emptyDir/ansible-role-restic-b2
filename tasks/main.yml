@@ -1,0 +1,10 @@
+---
+- name: Install backup tools
+  ansible.builtin.include_tasks: install.yml
+
+- name: Configure b2 destinations
+  ansible.builtin.include_tasks: b2.yml
+
+- name: Configure restic
+  ansible.builtin.include_tasks: restic.yml
+
