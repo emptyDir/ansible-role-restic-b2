@@ -11,6 +11,7 @@ b2_use_local_vars: true
 restic_bin: /usr/bin/restic
 restic_config_dir: /etc/restic
 restic_temp_dir: /var/tmp
+restic_cache_dir: /var/cache/restic
 restic_password_file: "{{ restic_config_dir }}/password"
 restic_env_file: "{{ restic_config_dir }}/restic.env"
 restic_backup_folders:
